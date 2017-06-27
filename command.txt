@@ -1,0 +1,4 @@
+cmake .. -DEIGEN3_DIR=/d/eigen/ -DN3L_DIR=/d/N3LDG
+
+-l -train E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\train.ctb60.seg -dev E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\train.ctb60.seg -test E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\test.ctb60.seg -option E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\option.debug
+-l -train E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\train.ctb60.seg -dev E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\dev.ctb60.seg -test E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\ctb60\test.ctb60.seg -option E:\experiments\ACL2016\ACL2016-Segmentation\experiment-v1\option.debug
