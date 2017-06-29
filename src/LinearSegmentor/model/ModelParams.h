@@ -99,29 +99,29 @@ public:
 	}
 
 
-	inline void setFixed(const int& base = 1){
-		app_1C_C0.setFixed(base);
-		app_1Wc0_C0.setFixed(base);
-		app_2CT_1CT_CT0.setFixed(base);
+	inline void setFixed(){
+		app_1C_C0.setFixed();
+		app_1Wc0_C0.setFixed();
+		app_2CT_1CT_CT0.setFixed();
 
-		sep_1C_C0.setFixed(base);
-		sep_1Wc0_C0.setFixed(base);
-		sep_2CT_1CT_CT0.setFixed(base);
-		sep_1W.setFixed(base);
-		sep_1WD_1WL.setFixed(base);
-		sep_1WSingle.setFixed(base);
-		sep_1W_C0.setFixed(base);
-		sep_2W_1W.setFixed(base);
-		sep_2Wc0_1W.setFixed(base);
-		sep_2Wcn_1W.setFixed(base);
-		sep_2Wc0_1Wc0.setFixed(base);
-		sep_2Wcn_1Wcn.setFixed(base);
-		sep_2W_1WL.setFixed(base);
-		sep_2WL_1W.setFixed(base);
-		sep_2W_1Wcn.setFixed(base);
-		sep_1Wc0_1WL.setFixed(base);
-		sep_1Wcn_1WL.setFixed(base);
-		sep_1Wci_1Wcn.setFixed(base);
+		sep_1C_C0.setFixed();
+		sep_1Wc0_C0.setFixed();
+		sep_2CT_1CT_CT0.setFixed();
+		sep_1W.setFixed();
+		sep_1WD_1WL.setFixed();
+		sep_1WSingle.setFixed();
+		sep_1W_C0.setFixed();
+		sep_2W_1W.setFixed();
+		sep_2Wc0_1W.setFixed();
+		sep_2Wcn_1W.setFixed();
+		sep_2Wc0_1Wc0.setFixed();
+		sep_2Wcn_1Wcn.setFixed();
+		sep_2W_1WL.setFixed();
+		sep_2WL_1W.setFixed();
+		sep_2W_1Wcn.setFixed();
+		sep_1Wc0_1WL.setFixed();
+		sep_1Wcn_1WL.setFixed();
+		sep_1Wci_1Wcn.setFixed();
 	}
 
 	// will add it later

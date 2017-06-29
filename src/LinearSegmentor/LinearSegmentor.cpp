@@ -6,7 +6,8 @@
  */
 
 #include "LinearSegmentor.h"
-
+#include <chrono>
+#include <omp.h>
 #include "Argument_helper.h"
 
 Segmentor::Segmentor(size_t memsize) : m_driver(memsize) {
@@ -218,7 +219,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
     }
   }
   cout << inputSize << std::endl;
-  m_driver._modelparams.setFixed(m_options.base);
+  m_driver._modelparams.setFixed();
 
   for (int iter = 0; iter < maxIter; ++iter) {
     std::cout << "##### Iteration " << iter << std::endl;
@@ -226,6 +227,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
     bool bEvaluate = false;
 
     if (m_options.batchSize == 1) {
+      auto t_start_train = std::chrono::high_resolution_clock::now();
       eval.reset();
       bEvaluate = true;
       random_shuffle(indexes.begin(), indexes.end());
@@ -242,14 +244,21 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         eval.correct_label_count += m_driver._eval.correct_label_count;
 
         if ((idy + 1) % (m_options.verboseIter * 10) == 0) {
-          std::cout << "current: " << idy + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy() << std::endl;
+          auto t_end_train = std::chrono::high_resolution_clock::now();
+          std::cout << "current: " << idy + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy()
+                    << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
         }
         m_driver.updateModel();
       }
-      std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy() << std::endl;
+      {
+        auto t_end_train = std::chrono::high_resolution_clock::now();
+        std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy() 
+                  << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+      }
     }
     else {
       eval.reset();
+      auto t_start_train = std::chrono::high_resolution_clock::now();
       bEvaluate = true;
       for (int idk = 0; idk < (inputSize + m_options.batchSize - 1) / m_options.batchSize; idk++) {
         random_shuffle(indexes.begin(), indexes.end());
@@ -265,16 +274,23 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         eval.correct_label_count += m_driver._eval.correct_label_count;
 
         if ((idk + 1) % (m_options.verboseIter * 10) == 0) {
-          std::cout << "current: " << idk + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy() << std::endl;
+          auto t_end_train = std::chrono::high_resolution_clock::now();
+          std::cout << "current: " << idk + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy() 
+                    << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
         }
 
         m_driver.updateModel();
       }
-      std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy() << std::endl;
+
+      {
+        auto t_end_train = std::chrono::high_resolution_clock::now();
+        std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy()
+                  << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+      }
     }
 
     if (bEvaluate && devNum > 0) {
-      clock_t time_start = clock();
+      auto t_start_dev = std::chrono::high_resolution_clock::now();
       std::cout << "Dev start." << std::endl;
       bCurIterBetter = false;
       if (!m_options.outBest.empty())
@@ -284,8 +300,8 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
       for (int idx = 0; idx < devInsts.size(); idx++) {
         devInsts[idx].evaluate(decodeInstResults[idx], metric_dev);
       }
-
-      std::cout << "Dev finished. Total time taken is: " << double(clock() - time_start) / CLOCKS_PER_SEC << std::endl;
+     auto t_end_dev = std::chrono::high_resolution_clock::now();
+      std::cout << "Dev finished. Total time taken is: " << std::chrono::duration<double>(t_end_dev - t_start_dev).count() << std::endl;
       std::cout << "dev:" << std::endl;
       metric_dev.print();
 
@@ -295,7 +311,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
       }
 
       if (testNum > 0) {
-        time_start = clock();
+        auto t_start_test = std::chrono::high_resolution_clock::now();
         std::cout << "Test start." << std::endl;
         if (!m_options.outBest.empty())
           decodeInstResults.clear();
@@ -304,7 +320,8 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         for (int idx = 0; idx < testInsts.size(); idx++) {
           testInsts[idx].evaluate(decodeInstResults[idx], metric_test);
         }
-        std::cout << "Test finished. Total time taken is: " << double(clock() - time_start) / CLOCKS_PER_SEC << std::endl;
+        auto t_end_test = std::chrono::high_resolution_clock::now();
+        std::cout << "Test finished. Total time taken is: " << std::chrono::duration<double>(t_end_test - t_start_test).count() << std::endl;
         std::cout << "test:" << std::endl;
         metric_test.print();
 
@@ -314,7 +331,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
       }
 
       for (int idx = 0; idx < otherInsts.size(); idx++) {
-        time_start = clock();
+        auto t_start_other = std::chrono::high_resolution_clock::now();
         std::cout << "processing " << m_options.testFiles[idx] << std::endl;
         if (!m_options.outBest.empty())
           decodeInstResults.clear();
@@ -323,7 +340,8 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         for (int idy = 0; idy < otherInsts[idx].size(); idy++) {
           otherInsts[idx][idy].evaluate(decodeInstResults[idy], metric_test);
         }
-        std::cout << "Test finished. Total time taken is: " << double(clock() - time_start) / CLOCKS_PER_SEC << std::endl;
+        auto t_end_other = std::chrono::high_resolution_clock::now();
+        std::cout << "Test finished. Total time taken is: " << std::chrono::duration<double>(t_end_other - t_start_other).count() << std::endl;
         std::cout << "test:" << std::endl;
         metric_test.print();
 
@@ -414,6 +432,7 @@ int main(int argc, char* argv[]) {
   bool bTrain = false;
   dsr::Argument_helper ah;
   int memsize = 0;
+  int threads = 2;
 
 
   ah.new_flag("l", "learn", "train or test", bTrain);
@@ -426,8 +445,17 @@ int main(int argc, char* argv[]) {
   ah.new_named_string("option", "optionFile", "named_string", "option file to train a model, optional when training", optionFile);
   ah.new_named_string("output", "outputFile", "named_string", "output file to test, must when testing", outputFile);
   ah.new_named_int("mem", "memsize", "named_int", "memory allocated for tensor nodes", memsize);
+  ah.new_named_int("th", "thread", "named_int", "number of threads for openmp", threads);
 
   ah.process(argc, argv);
+
+  omp_set_num_threads(threads);
+//  Eigen::setNbThreads(threads);
+//  mkl_set_num_threads(4);
+//  mkl_set_dynamic(false);
+//  omp_set_nested(false); 
+//  omp_set_dynamic(false);
+
 
   Segmentor segmentor(memsize);
   if (bTrain) {

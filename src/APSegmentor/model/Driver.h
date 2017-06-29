@@ -26,7 +26,7 @@ public:
   }
 
 public:
-  Graph _cg;  // build neural graphs
+  vector<Graph> _decode_cgs;
   vector<GraphBuilder> _builders;
   ModelParams _modelparams;  // model parameters
   HyperParams _hyperparams;
@@ -51,9 +51,10 @@ public:
     _hyperparams.print();
 
     _builders.resize(_hyperparams.batch);
+    _decode_cgs.resize(_hyperparams.batch);
 
     for (int idx = 0; idx < _hyperparams.batch; idx++) {
-      _builders[idx].initial(&_cg, _modelparams, _hyperparams, &aligned_mem);
+      _builders[idx].initial(_modelparams, _hyperparams, &aligned_mem);
     }
 
 
@@ -69,7 +70,6 @@ public:
   dtype train(const std::vector<std::vector<string> >& sentences, const vector<vector<CAction> >& goldACs) {
     _eval.reset();
     dtype cost = 0.0;
-    _cg.clearValue(true);
 
     int num = sentences.size();
     if (num > _builders.size()) {
@@ -77,13 +77,15 @@ public:
       return -1;
     }
 
+//#pragma omp parallel for schedule(static,1)
     for (int idx = 0; idx < num; idx++) {
-      _builders[idx].decode(&sentences[idx], &goldACs[idx]);
+      _decode_cgs[idx].clearValue(true);
+      _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx], &goldACs[idx]);
       _eval.overall_label_count += goldACs[idx].size();
       cost += loss(_builders[idx], num);
+      _decode_cgs[idx].backward();
     }
 
-    _cg.backward();
 
     return cost;
   }
@@ -94,11 +96,12 @@ public:
       std::cout << "input example number is larger than predefined batch number" << std::endl;
       return;
     }
-    _cg.clearValue();
 
     results.resize(num);
+#pragma omp parallel for schedule(static,1)
     for (int idx = 0; idx < num; idx++) {
-      _builders[idx].decode(&sentences[idx]);
+      _decode_cgs[idx].clearValue();
+      _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx]);
       int step = _builders[idx].outputs.size();
       _builders[idx].states[step - 1][0].getSegResults(results[idx]);
     }

@@ -52,7 +52,7 @@ endif()
 if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_HAS_C99_MATH /MP")   # -Wall produces 20k warnings
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -fopenmp")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces")
 endif()
 
 
@@ -62,7 +62,6 @@ else()
     SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fPIC -funroll-loops -w -std=c++11 -Ofast -march=native" )
 endif()
 add_definitions( -DUSE_FLOAT )
-add_definitions( -DEIGEN_DONT_PARALLELIZE )
 
 
 include_directories(${EIGEN3_DIR})
