@@ -288,7 +288,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
     }
   }
   cout << inputSize << std::endl;
-  m_driver._modelparams.setFixed();
+  m_driver._modelparams.setFixed(m_options.base);
 
   for (int iter = 0; iter < maxIter; ++iter) {
     std::cout << "##### Iteration " << iter << std::endl;

@@ -48,6 +48,9 @@ public:
 	int sid_2Wc0;
 	int sid_2Wcn;
 
+  ~AtomFeatures() {
+    clear();
+  }
 public:
 	void clear(){
 		str_C0 = "";
@@ -114,14 +117,14 @@ public:
 		if (ac.isAppend()){
 			model->app_1C_C0.collectFeature(sid_1C, sid_C0);
 			model->app_1Wc0_C0.collectFeature(sid_1Wc0, sid_C0);
-			model->app_2CT_1CT_CT0.collectFeature(sid_2CT, sid_1CT, sid_CT0);
+			model->app_2CT_1CT_CT0.collectFeature(sid_2CT, sid_1CT, sid_CT0);     
 		}
 		else{
 			model->sep_1C_C0.collectFeature(sid_1C, sid_C0);
 			model->sep_1Wc0_C0.collectFeature(sid_1Wc0, sid_C0);
 			model->sep_2CT_1CT_CT0.collectFeature(sid_2CT, sid_1CT, sid_CT0);
-			model->sep_1W.collectFeature(sid_1W);
-			model->sep_1WD_1WL.collectFeature(sid_1WD, sid_1WL);
+			model->sep_1W.collectFeature(sid_1W);			
+      model->sep_1WD_1WL.collectFeature(sid_1WD, sid_1WL);
 			if (sid_1WL == 1){
 				model->sep_1WSingle.collectFeature(sid_1W);
 			}

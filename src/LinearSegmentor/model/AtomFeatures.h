@@ -48,6 +48,9 @@ public:
 	int sid_2Wc0;
 	int sid_2Wcn;
 
+  ~AtomFeatures() {
+    clear();
+  }
 public:
 	void clear(){
 		str_C0 = "";

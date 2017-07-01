@@ -219,8 +219,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
     }
   }
   cout << inputSize << std::endl;
-  m_driver._modelparams.setFixed();
-
+  m_driver._modelparams.setFixed(m_options.base);
   for (int iter = 0; iter < maxIter; ++iter) {
     std::cout << "##### Iteration " << iter << std::endl;
     srand(iter);
@@ -246,14 +245,14 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         if ((idy + 1) % (m_options.verboseIter * 10) == 0) {
           auto t_end_train = std::chrono::high_resolution_clock::now();
           std::cout << "current: " << idy + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy()
-                    << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+            << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
         }
         m_driver.updateModel();
       }
       {
         auto t_end_train = std::chrono::high_resolution_clock::now();
-        std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy() 
-                  << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+        std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy()
+          << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
       }
     }
     else {
@@ -275,8 +274,8 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
 
         if ((idk + 1) % (m_options.verboseIter * 10) == 0) {
           auto t_end_train = std::chrono::high_resolution_clock::now();
-          std::cout << "current: " << idk + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy() 
-                    << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+          std::cout << "current: " << idk + 1 << ", Cost = " << cost << ", Correct(%) = " << eval.getAccuracy()
+            << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
         }
 
         m_driver.updateModel();
@@ -285,7 +284,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
       {
         auto t_end_train = std::chrono::high_resolution_clock::now();
         std::cout << "current: " << iter + 1 << ", Correct(%) = " << eval.getAccuracy()
-                  << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
+          << ", time = " << std::chrono::duration<double>(t_end_train - t_start_train).count() << std::endl;
       }
     }
 
@@ -300,7 +299,7 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
       for (int idx = 0; idx < devInsts.size(); idx++) {
         devInsts[idx].evaluate(decodeInstResults[idx], metric_dev);
       }
-     auto t_end_dev = std::chrono::high_resolution_clock::now();
+      auto t_end_dev = std::chrono::high_resolution_clock::now();
       std::cout << "Dev finished. Total time taken is: " << std::chrono::duration<double>(t_end_dev - t_start_dev).count() << std::endl;
       std::cout << "dev:" << std::endl;
       metric_dev.print();
@@ -465,5 +464,5 @@ int main(int argc, char* argv[]) {
     segmentor.test(testFile, outputFile, modelFile);
   }
 
-
+  getchar();
 }

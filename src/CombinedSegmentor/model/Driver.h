@@ -95,6 +95,13 @@ public:
 
     _cg.backward();
 
+    for (int idx = 0; idx < num; idx++) {
+      int maxstep = _builders[idx].outputs.size();
+      for (int step = 0; step < maxstep; step++) {
+        _builders[idx].states[step][0].collectFeat(&_modelparams);
+      }
+    }
+
     return cost;
   }
 
@@ -175,7 +182,7 @@ private:
 
     dtype  cost = 0.0;
 
-    for (int step = 0; step < maxstep; step++) {
+    for (int step = maxstep - 1; step < maxstep; step++) {
       int offset = builder.outputs[step].size();
       for (int idx = 0; idx < offset; idx++) {
         pCurNode = builder.outputs[step][idx].in;

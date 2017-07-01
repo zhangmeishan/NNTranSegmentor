@@ -284,7 +284,6 @@ public:
 	}
 
 	inline void prepare(HyperParams* hyper_params, ModelParams* model_params){
-		int idx, length, p1wstart, p1wend;
 		_atomFeat.str_C0 = _next_index < _char_size ? _chars->at(_next_index) : nullkey;
 		_atomFeat.str_1C = _next_index > 0 && _next_index - 1 < _char_size ? _chars->at(_next_index - 1) : nullkey;
 		_atomFeat.str_2C = _next_index > 1 && _next_index - 2 < _char_size ? _chars->at(_next_index - 2) : nullkey;
@@ -299,7 +298,7 @@ public:
 		_atomFeat.sid_1WD = _wend == -1 ? 0 : (hyper_params->dicts.find(_atomFeat.str_1W) != hyper_params->dicts.end() ? 1 : 2);
 
 		{
-			length = _wend - _wstart + 1;
+			int length = _wend - _wstart + 1;
 			if (length > 5)
 				length = 5;
 			_atomFeat.sid_1WL = _wend == -1 ? 0 : length;
@@ -315,13 +314,14 @@ public:
 			}
 		}
 
-		p1wstart = _prevStackState == 0 ? -1 : _prevStackState->_wstart;
-		p1wend = _prevStackState == 0 ? -1 : _prevStackState->_wend;
+		int p1wstart = _prevStackState == 0 ? -1 : _prevStackState->_wstart;
+		int p1wend = _prevStackState == 0 ? -1 : _prevStackState->_wend;
 		_atomFeat.str_2W = p1wend == -1 ? nullkey : _prevStackState->_word;
 		_atomFeat.str_2Wc0 = p1wend == -1 ? nullkey : _chars->at(p1wstart);
 		_atomFeat.str_2Wcn = p1wend == -1 ? nullkey : _chars->at(p1wend);
+
 		{
-			length = p1wend - p1wstart + 1;
+			int length = p1wend - p1wstart + 1;
 			if (length > 5)
 				length = 5;
 			_atomFeat.sid_2WL = p1wend == -1 ? 0 : length;
