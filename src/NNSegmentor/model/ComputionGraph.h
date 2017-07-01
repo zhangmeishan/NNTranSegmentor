@@ -63,7 +63,7 @@ public:
 
   inline void clear() {
     //beams.clear();
-
+    clearVec(outputs);
     clearVec(states);
     pModel = NULL;
     pOpts = NULL;
