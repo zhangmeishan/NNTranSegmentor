@@ -10,192 +10,127 @@
 
 #include "ModelParams.h"
 #include "AtomFeatures.h"
+#include "Action.h"
 
 struct ActionedNodes {
 
-	//append feature parameters
-	SparseC2Node  app_1C_C0;
-	SparseC2Node  app_1Wc0_C0;
-	SparseC3Node  app_2CT_1CT_CT0;
+    vector<SparseNode> sparse_features;
+    vector<PAddNode> outputs;
 
-	//separate feature parameters
-	SparseC2Node  sep_1C_C0;
-	SparseC2Node  sep_1Wc0_C0;
-	SparseC3Node  sep_2CT_1CT_CT0;
-	SparseC1Node  sep_1W;
-	SparseC2Node  sep_1WD_1WL;
-	SparseC1Node  sep_1WSingle;
-	SparseC2Node  sep_1W_C0;
-	SparseC2Node  sep_2W_1W;
-	SparseC2Node  sep_2Wc0_1W;
-	SparseC2Node  sep_2Wcn_1W;
-	SparseC2Node  sep_2Wc0_1Wc0;
-	SparseC2Node  sep_2Wcn_1Wcn;
-	SparseC2Node  sep_2W_1WL;
-	SparseC2Node  sep_2WL_1W;
-	SparseC2Node  sep_2W_1Wcn;
-	SparseC2Node  sep_1Wc0_1WL;
-	SparseC2Node  sep_1Wcn_1WL;
-	vector<SparseC2Node>  sep_1Wci_1Wcn;
+    ~ActionedNodes() {
+        outputs.clear();
+    }
 
-	vector<PAddNode> outputs;
+  public:
+    inline void initial(ModelParams& params, HyperParams& hyparams) {
+        outputs.resize(hyparams.action_num);
+        sparse_features.resize(hyparams.action_num);
+        for (int idx = 0; idx < hyparams.action_num; idx++) {
+            sparse_features[idx].setParam(&params.sep_app_feats);
+            sparse_features[idx].init(1, -1);
+            outputs[idx].init(1, -1);
+        }
 
- ~ActionedNodes() {
-   sep_1Wci_1Wcn.clear();
-   outputs.clear();
-  }
-
-public:
-	inline void initial(ModelParams& params, HyperParams& hyparams, AlignedMemoryPool* mem){
-		app_1C_C0.setParam(&params.app_1C_C0);
-		app_1Wc0_C0.setParam(&params.app_1Wc0_C0);
-		app_2CT_1CT_CT0.setParam(&params.app_2CT_1CT_CT0);
-
-		sep_1C_C0.setParam(&params.sep_1C_C0);
-		sep_1Wc0_C0.setParam(&params.sep_1Wc0_C0);
-		sep_2CT_1CT_CT0.setParam(&params.sep_2CT_1CT_CT0);
-		sep_1W.setParam(&params.sep_1W);
-		sep_1WD_1WL.setParam(&params.sep_1WD_1WL);
-		sep_1WSingle.setParam(&params.sep_1WSingle);
-		sep_1W_C0.setParam(&params.sep_1W_C0);
-		sep_2W_1W.setParam(&params.sep_2W_1W);
-		sep_2Wc0_1W.setParam(&params.sep_2Wc0_1W);
-		sep_2Wcn_1W.setParam(&params.sep_2Wcn_1W);
-		sep_2Wc0_1Wc0.setParam(&params.sep_2Wc0_1Wc0);
-		sep_2Wcn_1Wcn.setParam(&params.sep_2Wcn_1Wcn);
-		sep_2W_1WL.setParam(&params.sep_2W_1WL);
-		sep_2WL_1W.setParam(&params.sep_2WL_1W);
-		sep_2W_1Wcn.setParam(&params.sep_2W_1Wcn);
-		sep_1Wc0_1WL.setParam(&params.sep_1Wc0_1WL);
-		sep_1Wcn_1WL.setParam(&params.sep_1Wcn_1WL);
-		sep_1Wci_1Wcn.resize(hyparams.maxlength);
-		for (int idx = 0; idx < sep_1Wci_1Wcn.size(); idx++){
-			sep_1Wci_1Wcn[idx].setParam(&params.sep_1Wci_1Wcn);
-		}
-
-		//allocate node memories
-		app_1C_C0.init(1, -1, mem);
-		app_1Wc0_C0.init(1, -1, mem);
-		app_2CT_1CT_CT0.init(1, -1, mem);
-
-		sep_1C_C0.init(1, -1, mem);
-		sep_1Wc0_C0.init(1, -1, mem);
-		sep_2CT_1CT_CT0.init(1, -1, mem);
-		sep_1W.init(1, -1, mem);
-		sep_1WD_1WL.init(1, -1, mem);
-		sep_1WSingle.init(1, -1, mem);
-		sep_1W_C0.init(1, -1, mem);
-		sep_2W_1W.init(1, -1, mem);
-		sep_2Wc0_1W.init(1, -1, mem);
-		sep_2Wcn_1W.init(1, -1, mem);
-		sep_2Wc0_1Wc0.init(1, -1, mem);
-		sep_2Wcn_1Wcn.init(1, -1, mem);
-		sep_2W_1WL.init(1, -1, mem);
-		sep_2WL_1W.init(1, -1, mem);
-		sep_2W_1Wcn.init(1, -1, mem);
-		sep_1Wc0_1WL.init(1, -1, mem);
-		sep_1Wcn_1WL.init(1, -1, mem);
-
-		for (int idx = 0; idx < sep_1Wci_1Wcn.size(); idx++) {
-			sep_1Wci_1Wcn[idx].init(1, -1, mem);
-		}
-
-		outputs.resize(hyparams.action_num);
-		for (int idx = 0; idx < hyparams.action_num; idx++) {
-			outputs[idx].init(1, -1, mem);
-		}
-
-	}
+    }
 
 
-public:
-	inline void forward(Graph* cg, const vector<CAction>& actions, const AtomFeatures& atomFeat, PNode prevStateNode){
-		vector<PNode> sumNodes;
-		CAction ac;
-		int ac_num;
-		ac_num = actions.size();
-		for (int idx = 0; idx < ac_num; idx++){
-			ac.set(actions[idx]);
-			sumNodes.clear();
-			if (ac.isAppend()){
-				app_1C_C0.forward(cg, atomFeat.sid_1C, atomFeat.sid_C0);
-				if (app_1C_C0.executed)sumNodes.push_back(&app_1C_C0);
+  public:
+    inline void forward(Graph* cg, const vector<CAction>& actions, const AtomFeatures& atomFeat, PNode prevStateNode) {
+        vector<PNode> sumNodes;
+        vector<string> strFeats;
+        string strFeat = "";
+        CAction ac;
+        int ac_num;
+        ac_num = actions.size();
+        for (int idx = 0; idx < ac_num; idx++) {
+            ac.set(actions[idx]);
+            sumNodes.clear();
+            strFeats.clear();
+            if (ac.isAppend()) {
+                strFeat = "F01" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				app_1Wc0_C0.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_C0);
-				if (app_1Wc0_C0.executed)sumNodes.push_back(&app_1Wc0_C0);
+                strFeat = "F02" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				app_2CT_1CT_CT0.forward(cg, atomFeat.sid_2CT, atomFeat.sid_1CT, atomFeat.sid_CT0);
-				if (app_2CT_1CT_CT0.executed)sumNodes.push_back(&app_2CT_1CT_CT0);
-			}
-			else{
-				sep_1C_C0.forward(cg, atomFeat.sid_1C, atomFeat.sid_C0);
-				if (sep_1C_C0.executed)sumNodes.push_back(&sep_1C_C0);
+                strFeat = "F03" + seperateKey + atomFeat.str_2CT + atomFeat.str_1CT + atomFeat.str_CT0;
+                strFeats.push_back(strFeat);
+            } else {
+                strFeat = "F101" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_1Wc0_C0.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_C0);
-				if (sep_1Wc0_C0.executed)sumNodes.push_back(&sep_1Wc0_C0);
+                strFeat = "F102" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_2CT_1CT_CT0.forward(cg, atomFeat.sid_2CT, atomFeat.sid_1CT, atomFeat.sid_CT0);
-				if (sep_2CT_1CT_CT0.executed)sumNodes.push_back(&sep_2CT_1CT_CT0);
+                strFeat = "F103" + seperateKey + atomFeat.str_2CT + atomFeat.str_1CT + atomFeat.str_CT0;
+                strFeats.push_back(strFeat);
 
-				sep_1W.forward(cg, atomFeat.sid_1W);
-				if (sep_1W.executed)sumNodes.push_back(&sep_1W);
+                strFeat = "F104" + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_1WD_1WL.forward(cg, atomFeat.sid_1WD, atomFeat.sid_1WL);
-				if (sep_1WD_1WL.executed)sumNodes.push_back(&sep_1WD_1WL);
+                if (atomFeat.sid_1WL == 1) {
+                    strFeat = "F105" + seperateKey + atomFeat.str_1W;
+                    strFeats.push_back(strFeat);
+                }
 
-				if (atomFeat.sid_1WL == 1){
-					sep_1WSingle.forward(cg, atomFeat.sid_1W);
-					if (sep_1WSingle.executed)sumNodes.push_back(&sep_1WSingle);
-				}
+                strFeat = "F106" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_1W_C0.forward(cg, atomFeat.sid_1W, atomFeat.sid_C0);
-				if (sep_1W_C0.executed)sumNodes.push_back(&sep_1W_C0);
+                strFeat = "F107" + seperateKey + atomFeat.str_1W + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1W.forward(cg, atomFeat.sid_2W, atomFeat.sid_1W);
-				if (sep_2W_1W.executed)sumNodes.push_back(&sep_2W_1W);
+                strFeat = "F108" + seperateKey + atomFeat.str_1W + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
 
-				sep_2Wc0_1W.forward(cg, atomFeat.sid_2Wc0, atomFeat.sid_1W);
-				if (sep_2Wc0_1W.executed)sumNodes.push_back(&sep_2Wc0_1W);
+                strFeat = "F109" + seperateKey + atomFeat.str_2Wc0 + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2Wcn_1W.forward(cg, atomFeat.sid_2Wcn, atomFeat.sid_1W);
-				if (sep_2Wcn_1W.executed)sumNodes.push_back(&sep_2Wcn_1W);
+                strFeat = "F110" + seperateKey + atomFeat.str_2Wcn + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2Wc0_1Wc0.forward(cg, atomFeat.sid_2Wc0, atomFeat.sid_1Wc0);
-				if (sep_2Wc0_1Wc0.executed)sumNodes.push_back(&sep_2Wc0_1Wc0);
+                strFeat = "F111" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-				sep_2Wcn_1Wcn.forward(cg, atomFeat.sid_2Wcn, atomFeat.sid_1C);
-				if (sep_2Wcn_1Wcn.executed)sumNodes.push_back(&sep_2Wcn_1Wcn);
+                strFeat = "F112" + seperateKey + atomFeat.str_2WL + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1WL.forward(cg, atomFeat.sid_2W, atomFeat.sid_1WL);
-				if (sep_2W_1WL.executed)sumNodes.push_back(&sep_2W_1WL);
+                strFeat = "F113" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
 
-				sep_2WL_1W.forward(cg, atomFeat.sid_2WL, atomFeat.sid_1W);
-				if (sep_2WL_1W.executed)sumNodes.push_back(&sep_2WL_1W);
+                strFeat = "F114" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1Wcn.forward(cg, atomFeat.sid_2W, atomFeat.sid_1C);
-				if (sep_2W_1Wcn.executed)sumNodes.push_back(&sep_2W_1Wcn);
+                for (int idy = 0; idy < atomFeat.str_1Wci.size(); idy++) {
+                    strFeat = "F115" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_1Wci[idy];
+                    strFeats.push_back(strFeat);
+                }
 
-				sep_1Wc0_1WL.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_1WL);
-				if (sep_1Wc0_1WL.executed)sumNodes.push_back(&sep_1Wc0_1WL);
+                strFeat = "F116" + seperateKey + atomFeat.str_2Wc0 + seperateKey + atomFeat.str_1Wc0;
+                strFeats.push_back(strFeat);
 
-				sep_1Wcn_1WL.forward(cg, atomFeat.sid_1C, atomFeat.sid_1WL);
-				if (sep_1Wcn_1WL.executed)sumNodes.push_back(&sep_1Wcn_1WL);
+                strFeat = "F117" + seperateKey + atomFeat.str_2Wcn + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-				for (int idy = 0; idy < atomFeat.sid_1Wci.size(); idy++){
-					sep_1Wci_1Wcn[idy].forward(cg, atomFeat.sid_1Wci[idy], atomFeat.sid_1C);
-					if (sep_1Wci_1Wcn[idy].executed)sumNodes.push_back(&(sep_1Wci_1Wcn[idy]));
-				}
-        
-			}
-      
+                strFeat = "F118" + seperateKey + atomFeat.str_1WL + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-			if (prevStateNode != NULL){
-				sumNodes.push_back(prevStateNode);
-			}
+                strFeat = "F119" + seperateKey + atomFeat.str_1WL + seperateKey + atomFeat.str_1Wc0;
+                strFeats.push_back(strFeat);
 
-			outputs[idx].forward(cg, sumNodes);
-		}
-	}
+                strFeat = "F120" + seperateKey + atomFeat.str_1WD + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
+            }
+
+            sparse_features[idx].forward(cg, strFeats);
+            sumNodes.push_back(&sparse_features[idx]);
+
+            if (prevStateNode != NULL) {
+                sumNodes.push_back(prevStateNode);
+            }
+
+            outputs[idx].forward(cg, sumNodes);
+        }
+    }
 
 };
 

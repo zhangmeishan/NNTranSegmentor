@@ -10,308 +10,258 @@
 
 #include "ModelParams.h"
 #include "AtomFeatures.h"
+#include "Action.h"
 
 struct ActionedNodes {
 
-	//append feature parameters
-	SparseC2Node  app_1C_C0;
-	SparseC2Node  app_1Wc0_C0;
-	SparseC3Node  app_2CT_1CT_CT0;
+    vector<SparseNode> sparse_features;
 
-	//separate feature parameters
-	SparseC2Node  sep_1C_C0;
-	SparseC2Node  sep_1Wc0_C0;
-	SparseC3Node  sep_2CT_1CT_CT0;
-	SparseC1Node  sep_1W;
-	SparseC2Node  sep_1WD_1WL;
-	SparseC1Node  sep_1WSingle;
-	SparseC2Node  sep_1W_C0;
-	SparseC2Node  sep_2W_1W;
-	SparseC2Node  sep_2Wc0_1W;
-	SparseC2Node  sep_2Wcn_1W;
-	SparseC2Node  sep_2Wc0_1Wc0;
-	SparseC2Node  sep_2Wcn_1Wcn;
-	SparseC2Node  sep_2W_1WL;
-	SparseC2Node  sep_2WL_1W;
-	SparseC2Node  sep_2W_1Wcn;
-	SparseC2Node  sep_1Wc0_1WL;
-	SparseC2Node  sep_1Wcn_1WL;
-	vector<SparseC2Node>  sep_1Wci_1Wcn;
-	
     LookupNode last_word_input;
+    LookupNode last_wordlen_input;
+    ConcatNode word_concat;
+    UniNode word_represent;
     IncLSTM1Builder word_lstm;
-    ConcatNode word_state_concat;
-    UniNode word_state_hidden;
 
-    PSubNode char_span_repsent_left;
-    PSubNode char_span_repsent_right;
-    ConcatNode char_state_concat;
-    UniNode char_state_hidden;
+    AvgPoolNode char_span_repsent_left;
+    AvgPoolNode char_span_repsent_right;
 
-    UniNode app_state_represent;
-    BiNode sep_state_represent;
+    ConcatNode state_concat;
+    UniNode state_represent;
 
     LinearNode app_score;
-    LinearNode sep_score;	
-
-	vector<PAddNode> outputs;
+    LinearNode sep_score;
+    vector<PAddNode> outputs;
 
     BucketNode bucket_char, bucket_word;
-public:
-	inline void initial(ModelParams& params, HyperParams& hyparams, AlignedMemoryPool* mem){
-		app_1C_C0.setParam(&params.app_1C_C0);
-		app_1Wc0_C0.setParam(&params.app_1Wc0_C0);
-		app_2CT_1CT_CT0.setParam(&params.app_2CT_1CT_CT0);
 
-		sep_1C_C0.setParam(&params.sep_1C_C0);
-		sep_1Wc0_C0.setParam(&params.sep_1Wc0_C0);
-		sep_2CT_1CT_CT0.setParam(&params.sep_2CT_1CT_CT0);
-		sep_1W.setParam(&params.sep_1W);
-		sep_1WD_1WL.setParam(&params.sep_1WD_1WL);
-		sep_1WSingle.setParam(&params.sep_1WSingle);
-		sep_1W_C0.setParam(&params.sep_1W_C0);
-		sep_2W_1W.setParam(&params.sep_2W_1W);
-		sep_2Wc0_1W.setParam(&params.sep_2Wc0_1W);
-		sep_2Wcn_1W.setParam(&params.sep_2Wcn_1W);
-		sep_2Wc0_1Wc0.setParam(&params.sep_2Wc0_1Wc0);
-		sep_2Wcn_1Wcn.setParam(&params.sep_2Wcn_1Wcn);
-		sep_2W_1WL.setParam(&params.sep_2W_1WL);
-		sep_2WL_1W.setParam(&params.sep_2WL_1W);
-		sep_2W_1Wcn.setParam(&params.sep_2W_1Wcn);
-		sep_1Wc0_1WL.setParam(&params.sep_1Wc0_1WL);
-		sep_1Wcn_1WL.setParam(&params.sep_1Wcn_1WL);
-		sep_1Wci_1Wcn.resize(hyparams.maxlength);
-		for (int idx = 0; idx < sep_1Wci_1Wcn.size(); idx++){
-			sep_1Wci_1Wcn[idx].setParam(&params.sep_1Wci_1Wcn);
-		}
-
-		//allocate node memories
-		app_1C_C0.init(1, -1, mem);
-		app_1Wc0_C0.init(1, -1, mem);
-		app_2CT_1CT_CT0.init(1, -1, mem);
-
-		sep_1C_C0.init(1, -1, mem);
-		sep_1Wc0_C0.init(1, -1, mem);
-		sep_2CT_1CT_CT0.init(1, -1, mem);
-		sep_1W.init(1, -1, mem);
-		sep_1WD_1WL.init(1, -1, mem);
-		sep_1WSingle.init(1, -1, mem);
-		sep_1W_C0.init(1, -1, mem);
-		sep_2W_1W.init(1, -1, mem);
-		sep_2Wc0_1W.init(1, -1, mem);
-		sep_2Wcn_1W.init(1, -1, mem);
-		sep_2Wc0_1Wc0.init(1, -1, mem);
-		sep_2Wcn_1Wcn.init(1, -1, mem);
-		sep_2W_1WL.init(1, -1, mem);
-		sep_2WL_1W.init(1, -1, mem);
-		sep_2W_1Wcn.init(1, -1, mem);
-		sep_1Wc0_1WL.init(1, -1, mem);
-		sep_1Wcn_1WL.init(1, -1, mem);
-
-		for (int idx = 0; idx < sep_1Wci_1Wcn.size(); idx++) {
-			sep_1Wci_1Wcn[idx].init(1, -1, mem);
-		}
-
-
+    HyperParams *opt;
+  public:
+    ~ActionedNodes() {
+    }
+  public:
+    inline void initial(ModelParams& params, HyperParams& hyparams) {
         //neural features
         last_word_input.setParam(&(params.word_table));
-        last_word_input.init(hyparams.word_dim, hyparams.dropProb, mem);
-        word_lstm.init(&(params.word_lstm), hyparams.dropProb, mem); //already allocated here
-        word_state_concat.init(hyparams.word_feat_dim, -1, mem);
-        word_state_hidden.setParam(&(params.word_state_hidden));
-        word_state_hidden.init(hyparams.word_state_dim, hyparams.dropProb, mem);
+        last_word_input.init(hyparams.word_dim, hyparams.dropProb);
+        last_wordlen_input.setParam(&(params.wordlen_table));
+        last_wordlen_input.init(hyparams.length_dim, hyparams.dropProb);
+        word_concat.init(hyparams.word_concat_dim, -1);
+        word_represent.setParam(&(params.word_represent));
+        word_represent.init(hyparams.word_represent_dim, -1);
+        word_lstm.init(&(params.word_lstm), hyparams.dropProb); //already allocated here
 
-        char_span_repsent_left.init(hyparams.char_lstm_dim, -1, mem);
-        char_span_repsent_right.init(hyparams.char_lstm_dim, -1, mem);
-        char_state_concat.init(hyparams.char_feat_dim, -1, mem);
-        char_state_hidden.setParam(&params.char_state_hidden);
-        char_state_hidden.init(hyparams.char_state_dim, hyparams.dropProb, mem);
+        char_span_repsent_left.setParam(hyparams.maxlength);
+        char_span_repsent_left.init(hyparams.char_lstm_dim, -1);
+        char_span_repsent_right.setParam(hyparams.maxlength);
+        char_span_repsent_right.init(hyparams.char_lstm_dim, -1);
 
-        app_state_represent.setParam(&params.app_state_represent);
-        app_state_represent.init(hyparams.app_dim, hyparams.dropProb, mem);
-        sep_state_represent.setParam(&params.sep_state_represent);
-        sep_state_represent.init(hyparams.sep_dim, hyparams.dropProb, mem);
+        state_concat.init(hyparams.state_feat_dim, -1);
+
+        state_represent.setParam(&params.state_represent);
+        state_represent.init(hyparams.state_hidden_dim, -1);
 
 
         app_score.setParam(&(params.app_score));
-        app_score.init(1, -1, mem);
+        app_score.init(1, -1);
         sep_score.setParam(&(params.sep_score));
-        sep_score.init(1, -1, mem);
-		
-		outputs.resize(hyparams.action_num);
-		for (int idx = 0; idx < hyparams.action_num; idx++) {
-			outputs[idx].init(1, -1, mem);
-		}
-		
-		bucket_char.init(hyparams.char_lstm_dim, -1, mem);
-        bucket_word.init(hyparams.word_lstm_dim, -1, mem);
-	}
+        sep_score.init(1, -1);
+        outputs.resize(hyparams.action_num);
+        sparse_features.resize(hyparams.action_num);
+        //neural features
+        for (int idx = 0; idx < hyparams.action_num; idx++) {
+            sparse_features[idx].setParam(&params.sep_app_feats);
+            sparse_features[idx].init(1, -1);
+            outputs[idx].init(1, -1);
+        }
+
+        opt = &hyparams;
+        bucket_char.init(hyparams.char_lstm_dim, -1);
+        bucket_word.init(hyparams.word_lstm_dim, -1);
+    }
 
 
-public:
-	inline void forward(Graph* cg, const vector<CAction>& actions, const AtomFeatures& atomFeat, PNode prevStateNode){
-		vector<PNode> sumNodes;
-		CAction ac;
-		int ac_num;
-		ac_num = actions.size();
-		
+  public:
+    inline void forward(Graph* cg, const vector<CAction>& actions, AtomFeatures& atomFeat, PNode prevStateNode) {
+        vector<PNode> sumNodes;
+        vector<string> strFeats;
+        string strFeat = "";
+        CAction ac;
+        int ac_num;
+        ac_num = actions.size();
+
         bucket_char.forward(cg, 0);
         bucket_word.forward(cg, 0);
         PNode pseudo_char = &(bucket_char);
         PNode pseudo_word = &(bucket_word);
 
 
-
-        vector<PNode> wordNodes;
-        last_word_input.forward(cg, atomFeat.str_1W);
-        word_lstm.forward(cg, &last_word_input, atomFeat.p_word_lstm);
-        wordNodes.push_back(&word_lstm._hidden);
-        if (word_lstm._nSize > 1) {
-            wordNodes.push_back(&word_lstm._pPrev->_hidden);
-        }
-        else {
-            wordNodes.push_back(pseudo_word);
-        }
-        word_state_concat.forward(cg, wordNodes);
-        word_state_hidden.forward(cg, &word_state_concat);
-
-
-        //
-        vector<PNode> charNodes;
+        //chars
         int char_posi = atomFeat.next_position;
         PNode char_node_left_curr = (char_posi  < atomFeat.char_size) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi]) : pseudo_char;
-        PNode char_node_left_next1 = (char_posi + 1  < atomFeat.char_size) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi + 1]) : pseudo_char;
-        PNode char_node_left_next2 = (char_posi + 2  < atomFeat.char_size) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi + 2]) : pseudo_char;
-        PNode char_node_left_prev1 = (char_posi > 0) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi - 1]) : pseudo_char;
-        PNode char_node_left_prev2 = (char_posi > 1) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi - 2]) : pseudo_char;
+        //PNode char_node_left_next1 = (char_posi + 1  < atomFeat.char_size) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi + 1]) : pseudo_char;
+        //PNode char_node_left_next2 = (char_posi + 2  < atomFeat.char_size) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi + 2]) : pseudo_char;
+        //PNode char_node_left_prev1 = (char_posi > 0) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi - 1]) : pseudo_char;
+        //PNode char_node_left_prev2 = (char_posi > 1) ? &(atomFeat.p_char_left_lstm->_hiddens[char_posi - 2]) : pseudo_char;
 
         PNode char_node_right_curr = (char_posi  < atomFeat.char_size) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi]) : pseudo_char;
-        PNode char_node_right_next1 = (char_posi + 1  < atomFeat.char_size) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi + 1]) : pseudo_char;
-        PNode char_node_right_next2 = (char_posi + 2  < atomFeat.char_size) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi + 2]) : pseudo_char;
-        PNode char_node_right_prev1 = (char_posi > 0) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi - 1]) : pseudo_char;
-        PNode char_node_right_prev2 = (char_posi > 1) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi - 2]) : pseudo_char;
+        //PNode char_node_right_next1 = (char_posi + 1  < atomFeat.char_size) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi + 1]) : pseudo_char;
+        //PNode char_node_right_next2 = (char_posi + 2  < atomFeat.char_size) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi + 2]) : pseudo_char;
+        //PNode char_node_right_prev1 = (char_posi > 0) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi - 1]) : pseudo_char;
+        //PNode char_node_right_prev2 = (char_posi > 1) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi - 2]) : pseudo_char;
 
-        charNodes.push_back(char_node_left_curr);
-        charNodes.push_back(char_node_left_next1);
-        charNodes.push_back(char_node_left_next2);
-        charNodes.push_back(char_node_left_prev1);
-        charNodes.push_back(char_node_left_prev2);
 
-        charNodes.push_back(char_node_right_curr);
-        charNodes.push_back(char_node_right_next1);
-        charNodes.push_back(char_node_right_next2);
-        charNodes.push_back(char_node_right_prev1);
-        charNodes.push_back(char_node_right_prev2);
+        vector<PNode> left_lstm_nodes, right_lstm_nodes;
+        int word_included_char_num = 0;
+        for (int idx = atomFeat.word_start; idx < atomFeat.next_position; idx++) {
+            if (idx >= 0 && idx < atomFeat.char_size) {
+                left_lstm_nodes.push_back(&(atomFeat.p_char_left_lstm->_hiddens[idx]));
+                right_lstm_nodes.push_back(&(atomFeat.p_char_right_lstm->_hiddens[idx]));
+                word_included_char_num++;
+            }
+        }
+        if (word_included_char_num > 0) {
+            char_span_repsent_left.forward(cg, left_lstm_nodes);
+            char_span_repsent_right.forward(cg, right_lstm_nodes);
+        }
 
-        PNode char_lstm_left_start = atomFeat.word_start > 0 ? &(atomFeat.p_char_left_lstm->_hiddens[atomFeat.word_start - 1]) : pseudo_char;
-        PNode char_lstm_left_end = char_node_left_prev1;
+        vector<PNode> word_components;
+        last_word_input.forward(cg, atomFeat.str_1W);
+        word_components.push_back(&last_word_input);
 
-        PNode char_lstm_right_start = atomFeat.word_start >= 0 ? &(atomFeat.p_char_right_lstm->_hiddens[atomFeat.word_start]) : pseudo_char;
-        PNode char_lstm_right_end = char_node_right_curr;
+        last_wordlen_input.forward(cg, atomFeat.str_1WL);
+        word_components.push_back(&last_wordlen_input);
 
-        char_span_repsent_left.forward(cg, char_lstm_left_end, char_lstm_left_start);
-        charNodes.push_back(&char_span_repsent_left);
-        char_span_repsent_right.forward(cg, char_lstm_right_start, char_lstm_right_end);
-        charNodes.push_back(&char_span_repsent_right);
+        if (word_included_char_num > 0) {
+            word_components.push_back(&char_span_repsent_left);
+            word_components.push_back(&char_span_repsent_right);
+        } else {
+            word_components.push_back(pseudo_char);
+            word_components.push_back(pseudo_char);
+        }
 
-        char_state_concat.forward(cg, charNodes);
-        char_state_hidden.forward(cg, &char_state_concat);
+        word_concat.forward(cg, word_components);
+        word_represent.forward(cg, &word_concat);
+        word_lstm.forward(cg, &word_represent, atomFeat.p_word_lstm);
 
-        app_state_represent.forward(cg, &char_state_hidden);
-        sep_state_represent.forward(cg, &char_state_hidden, &word_state_hidden);
-				
-		for (int idx = 0; idx < ac_num; idx++){
-			ac.set(actions[idx]);
-			sumNodes.clear();
-			if (ac.isAppend()){
-				app_1C_C0.forward(cg, atomFeat.sid_1C, atomFeat.sid_C0);
-				if (app_1C_C0.executed)sumNodes.push_back(&app_1C_C0);
 
-				app_1Wc0_C0.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_C0);
-				if (app_1Wc0_C0.executed)sumNodes.push_back(&app_1Wc0_C0);
+        vector<PNode> state_components;
+        state_components.push_back(&word_lstm._hidden);
+        //
+        state_components.push_back(char_node_left_curr);
+        //state_components.push_back(char_node_left_next1);
+        //state_components.push_back(char_node_left_next2);
+        //state_components.push_back(char_node_left_prev1);
+        //state_components.push_back(char_node_left_prev2);
 
-				app_2CT_1CT_CT0.forward(cg, atomFeat.sid_2CT, atomFeat.sid_1CT, atomFeat.sid_CT0);
-				if (app_2CT_1CT_CT0.executed)sumNodes.push_back(&app_2CT_1CT_CT0);
-			}
-			else{
-				sep_1C_C0.forward(cg, atomFeat.sid_1C, atomFeat.sid_C0);
-				if (sep_1C_C0.executed)sumNodes.push_back(&sep_1C_C0);
+        state_components.push_back(char_node_right_curr);
+        //state_components.push_back(char_node_right_next1);
+        //state_components.push_back(char_node_right_next2);
+        //state_components.push_back(char_node_right_prev1);
+        //state_components.push_back(char_node_right_prev2);
 
-				sep_1Wc0_C0.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_C0);
-				if (sep_1Wc0_C0.executed)sumNodes.push_back(&sep_1Wc0_C0);
+        state_concat.forward(cg, state_components);
+        state_represent.forward(cg, &state_concat);
 
-				sep_2CT_1CT_CT0.forward(cg, atomFeat.sid_2CT, atomFeat.sid_1CT, atomFeat.sid_CT0);
-				if (sep_2CT_1CT_CT0.executed)sumNodes.push_back(&sep_2CT_1CT_CT0);
+        for (int idx = 0; idx < ac_num; idx++) {
+            ac.set(actions[idx]);
+            sumNodes.clear();
+            strFeats.clear();
+            if (ac.isAppend()) {
+                strFeat = "F01" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_1W.forward(cg, atomFeat.sid_1W);
-				if (sep_1W.executed)sumNodes.push_back(&sep_1W);
+                strFeat = "F02" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_1WD_1WL.forward(cg, atomFeat.sid_1WD, atomFeat.sid_1WL);
-				if (sep_1WD_1WL.executed)sumNodes.push_back(&sep_1WD_1WL);
+                strFeat = "F03" + seperateKey + atomFeat.str_2CT + atomFeat.str_1CT + atomFeat.str_CT0;
+                strFeats.push_back(strFeat);
+            } else {
+                strFeat = "F101" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				if (atomFeat.sid_1WL == 1){
-					sep_1WSingle.forward(cg, atomFeat.sid_1W);
-					if (sep_1WSingle.executed)sumNodes.push_back(&sep_1WSingle);
-				}
+                strFeat = "F102" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_1W_C0.forward(cg, atomFeat.sid_1W, atomFeat.sid_C0);
-				if (sep_1W_C0.executed)sumNodes.push_back(&sep_1W_C0);
+                strFeat = "F103" + seperateKey + atomFeat.str_2CT + atomFeat.str_1CT + atomFeat.str_CT0;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1W.forward(cg, atomFeat.sid_2W, atomFeat.sid_1W);
-				if (sep_2W_1W.executed)sumNodes.push_back(&sep_2W_1W);
+                strFeat = "F104" + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2Wc0_1W.forward(cg, atomFeat.sid_2Wc0, atomFeat.sid_1W);
-				if (sep_2Wc0_1W.executed)sumNodes.push_back(&sep_2Wc0_1W);
+                if (atomFeat.sid_1WL == 1) {
+                    strFeat = "F105" + seperateKey + atomFeat.str_1W;
+                    strFeats.push_back(strFeat);
+                }
 
-				sep_2Wcn_1W.forward(cg, atomFeat.sid_2Wcn, atomFeat.sid_1W);
-				if (sep_2Wcn_1W.executed)sumNodes.push_back(&sep_2Wcn_1W);
+                strFeat = "F106" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2Wc0_1Wc0.forward(cg, atomFeat.sid_2Wc0, atomFeat.sid_1Wc0);
-				if (sep_2Wc0_1Wc0.executed)sumNodes.push_back(&sep_2Wc0_1Wc0);
+                strFeat = "F107" + seperateKey + atomFeat.str_1W + seperateKey + atomFeat.str_C0;
+                strFeats.push_back(strFeat);
 
-				sep_2Wcn_1Wcn.forward(cg, atomFeat.sid_2Wcn, atomFeat.sid_1C);
-				if (sep_2Wcn_1Wcn.executed)sumNodes.push_back(&sep_2Wcn_1Wcn);
+                strFeat = "F108" + seperateKey + atomFeat.str_1W + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1WL.forward(cg, atomFeat.sid_2W, atomFeat.sid_1WL);
-				if (sep_2W_1WL.executed)sumNodes.push_back(&sep_2W_1WL);
+                strFeat = "F109" + seperateKey + atomFeat.str_2Wc0 + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2WL_1W.forward(cg, atomFeat.sid_2WL, atomFeat.sid_1W);
-				if (sep_2WL_1W.executed)sumNodes.push_back(&sep_2WL_1W);
+                strFeat = "F110" + seperateKey + atomFeat.str_2Wcn + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_2W_1Wcn.forward(cg, atomFeat.sid_2W, atomFeat.sid_1C);
-				if (sep_2W_1Wcn.executed)sumNodes.push_back(&sep_2W_1Wcn);
+                strFeat = "F111" + seperateKey + atomFeat.str_1Wc0 + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-				sep_1Wc0_1WL.forward(cg, atomFeat.sid_1Wc0, atomFeat.sid_1WL);
-				if (sep_1Wc0_1WL.executed)sumNodes.push_back(&sep_1Wc0_1WL);
+                strFeat = "F112" + seperateKey + atomFeat.str_2WL + seperateKey + atomFeat.str_1W;
+                strFeats.push_back(strFeat);
 
-				sep_1Wcn_1WL.forward(cg, atomFeat.sid_1C, atomFeat.sid_1WL);
-				if (sep_1Wcn_1WL.executed)sumNodes.push_back(&sep_1Wcn_1WL);
+                strFeat = "F113" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
 
-				for (int idx = 0; idx < atomFeat.sid_1Wci.size(); idx++){
-					sep_1Wci_1Wcn[idx].forward(cg, atomFeat.sid_1Wci[idx], atomFeat.sid_1C);
-					if (sep_1Wci_1Wcn[idx].executed)sumNodes.push_back(&(sep_1Wci_1Wcn[idx]));
-				}
-			}
+                strFeat = "F114" + seperateKey + atomFeat.str_2W + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
 
-			if (prevStateNode != NULL){
-				sumNodes.push_back(prevStateNode);
-			}
-			
-         if (ac.isAppend()) {
-                app_score.forward(cg, &app_state_represent);
+                for (int idy = 0; idy < atomFeat.str_1Wci.size(); idy++) {
+                    strFeat = "F115" + seperateKey + atomFeat.str_1C + seperateKey + atomFeat.str_1Wci[idy];
+                    strFeats.push_back(strFeat);
+                }
+
+                strFeat = "F116" + seperateKey + atomFeat.str_2Wc0 + seperateKey + atomFeat.str_1Wc0;
+                strFeats.push_back(strFeat);
+
+                strFeat = "F117" + seperateKey + atomFeat.str_2Wcn + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
+
+                strFeat = "F118" + seperateKey + atomFeat.str_1WL + seperateKey + atomFeat.str_1C;
+                strFeats.push_back(strFeat);
+
+                strFeat = "F119" + seperateKey + atomFeat.str_1WL + seperateKey + atomFeat.str_1Wc0;
+                strFeats.push_back(strFeat);
+
+                strFeat = "F120" + seperateKey + atomFeat.str_1WD + seperateKey + atomFeat.str_1WL;
+                strFeats.push_back(strFeat);
+            }
+
+            sparse_features[idx].forward(cg, strFeats);
+            sumNodes.push_back(&sparse_features[idx]);
+
+
+            if (ac.isAppend()) {
+                app_score.forward(cg, &state_represent);
                 sumNodes.push_back(&app_score);
-            }
-            else if (ac.isSeparate() || ac.isFinish()) {
-                sep_score.forward(cg, &sep_state_represent);
+            } else if (ac.isSeparate() || ac.isFinish()) {
+                sep_score.forward(cg, &state_represent);
                 sumNodes.push_back(&sep_score);
-            }
-            else {
+            } else {
                 std::cout << "error action here" << std::endl;
-            }			
+            }
 
-			outputs[idx].forward(cg, sumNodes);
-		}
-	}
+            if (prevStateNode != NULL) {
+                sumNodes.push_back(prevStateNode);
+            }
+
+            outputs[idx].forward(cg, sumNodes);
+        }
+    }
 
 };
 
