@@ -14,13 +14,7 @@
 
 struct ActionedNodes {
     LookupNode last_word_input;
-    LookupNode last_wordlen_input;
-    ConcatNode word_concat;
-    UniNode word_represent;
     IncLSTM1Builder word_lstm;
-
-    AvgPoolNode char_span_repsent_left;
-    AvgPoolNode char_span_repsent_right;
 
     ConcatNode state_concat;
     UniNode state_represent;
@@ -40,17 +34,8 @@ struct ActionedNodes {
     inline void initial(ModelParams& params, HyperParams& hyparams) {
         last_word_input.setParam(&(params.word_table));
         last_word_input.init(hyparams.word_dim, hyparams.dropProb);
-        last_wordlen_input.setParam(&(params.wordlen_table));
-        last_wordlen_input.init(hyparams.length_dim, hyparams.dropProb);
-        word_concat.init(hyparams.word_concat_dim, -1);
-        word_represent.setParam(&(params.word_represent));
-        word_represent.init(hyparams.word_represent_dim, -1);
         word_lstm.init(&(params.word_lstm), hyparams.dropProb); //already allocated here
 
-        char_span_repsent_left.setParam(hyparams.maxlength);
-        char_span_repsent_left.init(hyparams.char_lstm_dim, -1);
-        char_span_repsent_right.setParam(hyparams.maxlength);
-        char_span_repsent_right.init(hyparams.char_lstm_dim, -1);
 
         state_concat.init(hyparams.state_feat_dim, -1);
 
@@ -105,38 +90,8 @@ struct ActionedNodes {
         //PNode char_node_right_prev2 = (char_posi > 1) ? &(atomFeat.p_char_right_lstm->_hiddens[char_posi - 2]) : pseudo_char;
 
 
-        vector<PNode> left_lstm_nodes, right_lstm_nodes;
-        int word_included_char_num = 0;
-        for (int idx = atomFeat.word_start; idx < atomFeat.next_position; idx++) {
-            if (idx >= 0 && idx < atomFeat.char_size) {
-                left_lstm_nodes.push_back(&(atomFeat.p_char_left_lstm->_hiddens[idx]));
-                right_lstm_nodes.push_back(&(atomFeat.p_char_right_lstm->_hiddens[idx]));
-                word_included_char_num++;
-            }
-        }
-        if (word_included_char_num > 0) {
-            char_span_repsent_left.forward(cg, left_lstm_nodes);
-            char_span_repsent_right.forward(cg, right_lstm_nodes);
-        }
-
-        vector<PNode> word_components;
         last_word_input.forward(cg, atomFeat.str_1W);
-        word_components.push_back(&last_word_input);
-
-        last_wordlen_input.forward(cg, atomFeat.str_1WL);
-        word_components.push_back(&last_wordlen_input);
-
-        if (word_included_char_num > 0) {
-            word_components.push_back(&char_span_repsent_left);
-            word_components.push_back(&char_span_repsent_right);
-        } else {
-            word_components.push_back(pseudo_char);
-            word_components.push_back(pseudo_char);
-        }
-
-        word_concat.forward(cg, word_components);
-        word_represent.forward(cg, &word_concat);
-        word_lstm.forward(cg, &word_represent, atomFeat.p_word_lstm);
+        word_lstm.forward(cg, &last_word_input, atomFeat.p_word_lstm);
 
 
         vector<PNode> state_components;

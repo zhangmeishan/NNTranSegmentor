@@ -33,7 +33,7 @@ class CAction {
 
   public:
     inline void clear() {
-        _code=NO_ACTION;
+        _code = NO_ACTION;
     }
 
     inline void set(int code) {
@@ -83,8 +83,6 @@ class CAction {
     }
 
 };
-
-
 
 
 #endif /* BASIC_CAction_H_ */

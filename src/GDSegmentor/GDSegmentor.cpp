@@ -28,39 +28,16 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
 
     unordered_map<string, int> word_stat;
     unordered_map<string, int> char_stat;
-    unordered_map<string, int> bichar_stat;
-    unordered_map<string, int> charType_stat;
 
-    charType_stat["U"] = 1;
-    charType_stat["u"] = 1;
-    charType_stat["e"] = 1;
-    charType_stat["E"] = 1;
-    charType_stat["p"] = 1;
-    charType_stat["d"] = 1;
-    charType_stat["o"] = 1;
 
-	unordered_map<string, int> wordlens_stat;
-	wordlens_stat["0"] = 1;
-	wordlens_stat["1"] = 1;
-	wordlens_stat["2"] = 1;
-	wordlens_stat["3"] = 1;
-	wordlens_stat["4"] = 1;
-	wordlens_stat["5"] = 1;
-	wordlens_stat["6"] = 1;
-	m_driver._modelparams.embeded_wordlens.initial(wordlens_stat);
     assert(numInstance > 0);
     int count = 0;
     for (numInstance = 0; numInstance < vecInsts.size(); numInstance++) {
         const Instance &instance = vecInsts[numInstance];
-        //for (int idx = 0; idx < instance.wordsize(); idx++) {
-        //    word_stat[instance.words[idx]]++;
-        //}
 		int charsize = instance.charsize();
         for (int idx = 0; idx < charsize; idx++) {
             char_stat[instance.chars[idx]]++;
-            if (idx < charsize - 1) {
-                bichar_stat[instance.chars[idx] + instance.chars[idx + 1]]++;
-            }
+
 			string  subword = "";
 			for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
 				subword = subword + instance.chars[idx + idy];
@@ -69,14 +46,11 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
         }
         count += instance.wordsize();
     }
+
     word_stat[nullkey] = m_options.wordCutOff + 1;
     word_stat[unknownkey] = m_options.wordCutOff + 1;
     char_stat[nullkey] = m_options.charCutOff + 1;
     char_stat[unknownkey] = m_options.charCutOff + 1;
-    bichar_stat[nullkey] = m_options.bicharCutOff + 1;
-    bichar_stat[unknownkey] = m_options.bicharCutOff + 1;
-    m_driver._modelparams.words.initial(word_stat, m_options.wordCutOff);
-    m_driver._modelparams.chars.initial(char_stat, m_options.charCutOff);
 
     if (!m_options.wordEmbFineTune && m_options.wordEmbFile != "") {
         m_driver._modelparams.embeded_words.initial(m_options.wordEmbFile);
@@ -91,17 +65,6 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     if (!m_driver._modelparams.embeded_chars.is_fixed()) {
         m_driver._modelparams.embeded_chars.initial(char_stat, m_options.charCutOff);
     }
-
-    if (!m_options.bicharEmbFineTune && m_options.bicharEmbFile != "") {
-        m_driver._modelparams.embeded_bichars.initial(m_options.bicharEmbFile);
-    }
-    if (!m_driver._modelparams.embeded_bichars.is_fixed()) {
-        m_driver._modelparams.embeded_bichars.initial(bichar_stat, m_options.charCutOff);
-    }
-
-    charType_stat[nullkey] = 1;
-    m_driver._modelparams.embeded_chartypes.initial(charType_stat);
-    m_driver._modelparams.charTypes.initial(charType_stat);
 
     vector<CStateItem> state(m_driver._hyperparams.maxlength + 1);
     vector<string> output;
@@ -144,9 +107,6 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     cout << "Total word num: " << word_stat.size() << endl;
     cout << "Total char num: " << char_stat.size() << endl;
 
-    cout << "Remain word num: " << m_driver._modelparams.words.size() << endl;
-    cout << "Remain char num: " << m_driver._modelparams.chars.size() << endl;
-    cout << "Remain charType num: " << m_driver._modelparams.charTypes.size() << endl;
 
     return 0;
 }
@@ -238,21 +198,6 @@ void Segmentor::train(const string& trainFile, const string& devFile, const stri
         m_options.charEmbFineTune = true;
         m_driver._modelparams.char_table.initial(&m_driver._modelparams.embeded_chars, m_options.charEmbSize, true);
     }
-
-    initial_successed = false;
-    if (m_options.bicharEmbFile != "") {
-        initial_successed = m_driver._modelparams.bichar_table.initial(&m_driver._modelparams.embeded_bichars, m_options.bicharEmbFile, m_options.bicharEmbFineTune, m_options.bicharEmbNormalize);
-        if (initial_successed) {
-            m_options.bicharEmbSize = m_driver._modelparams.bichar_table.nDim;
-        }
-    }
-    if (!initial_successed) {
-        m_options.bicharEmbFineTune = true;
-        m_driver._modelparams.bichar_table.initial(&m_driver._modelparams.embeded_bichars, m_options.bicharEmbSize, true);
-    }
-
-    m_driver._modelparams.chartype_table.initial(&m_driver._modelparams.embeded_chartypes, m_options.charTypeEmbSize, true);
-	m_driver._modelparams.wordlen_table.initial(&m_driver._modelparams.embeded_wordlens, m_options.lengthEmbSize, true);
 
     m_driver._hyperparams.action_num = CAction::FIN + 1;
     m_driver._hyperparams.setRequared(m_options);

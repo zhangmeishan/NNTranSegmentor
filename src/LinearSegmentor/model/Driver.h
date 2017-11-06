@@ -173,7 +173,7 @@ class Driver {
         vector<dtype> scores;
         dtype cost = 0.0;
 
-        for (int step = 0; step < maxstep; step++) {
+        for (int step = maxstep - 1; step < maxstep; step++) {
             curcount = builder.outputs[step].size();
             max = 0.0;
             goldIndex = -1;
