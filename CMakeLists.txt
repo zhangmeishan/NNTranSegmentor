@@ -65,7 +65,7 @@ add_definitions( -DUSE_FLOAT )
 add_definitions( -DEIGEN_DONT_PARALLELIZE )
 
 
-include_directories(${EIGEN3_DIR})
-include_directories(${N3L_DIR})
+include_directories(eigen)
+include_directories(EGN3LDG)
 
 add_subdirectory(src)

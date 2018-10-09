@@ -34,15 +34,15 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     int count = 0;
     for (numInstance = 0; numInstance < vecInsts.size(); numInstance++) {
         const Instance &instance = vecInsts[numInstance];
-		int charsize = instance.charsize();
+        int charsize = instance.charsize();
         for (int idx = 0; idx < charsize; idx++) {
             char_stat[instance.chars[idx]]++;
 
-			string  subword = "";
-			for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
-				subword = subword + instance.chars[idx + idy];
-				word_stat[subword]++;
-			}
+            string  subword = "";
+            for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
+                subword = subword + instance.chars[idx + idy];
+                word_stat[subword]++;
+            }
         }
         count += instance.wordsize();
     }

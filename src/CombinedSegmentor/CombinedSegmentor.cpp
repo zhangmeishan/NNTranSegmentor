@@ -38,26 +38,26 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
         for (int idx = 0; idx < instance.wordsize(); idx++) {
             fullword_stat[instance.words[idx]]++;
         }
-		int charsize = instance.charsize();
+        int charsize = instance.charsize();
         for (int idx = 0; idx < charsize; idx++) {
             char_stat[instance.chars[idx]]++;
 
-			string  subword = "";
-			for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
-				subword = subword + instance.chars[idx + idy];
-				word_stat[subword]++;
-			}
+            string  subword = "";
+            for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
+                subword = subword + instance.chars[idx + idy];
+                word_stat[subword]++;
+            }
         }
         count += instance.wordsize();
     }
-	
-	unordered_map<string, int>::const_iterator elem_iter;
+
+    unordered_map<string, int>::const_iterator elem_iter;
     for (elem_iter = fullword_stat.begin(); elem_iter != fullword_stat.end(); elem_iter++) {
         if (elem_iter->second > count / 50000 + 3) {
             m_driver._hyperparams.dicts.insert(elem_iter->first);
         }
     }
-	
+
 
     word_stat[nullkey] = m_options.wordCutOff + 1;
     word_stat[unknownkey] = m_options.wordCutOff + 1;
@@ -78,31 +78,31 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
         m_driver._modelparams.embeded_chars.initial(char_stat, m_options.charCutOff);
     }
 
-	unordered_map<string, int> feat_stat;
-	vector<string> strFeats;
+    unordered_map<string, int> feat_stat;
+    vector<string> strFeats;
     vector<CStateItem> state(m_driver._hyperparams.maxlength + 1);
     vector<string> output;
     CAction answer;
     Metric eval;
     int actionNum;
     eval.reset();
-	std::cout << "Collect gold-standard features..." << std::endl;
+    std::cout << "Collect gold-standard features..." << std::endl;
     for (numInstance = 0; numInstance < vecInsts.size(); numInstance++) {
         const Instance &instance = vecInsts[numInstance];
         actionNum = 0;
         state[actionNum].clear();
-		strFeats.clear();
+        strFeats.clear();
         state[actionNum].setInput(&instance.chars);
         while (!state[actionNum].IsTerminated()) {
             state[actionNum].getGoldAction(instance.words, answer);
-			state[actionNum].prepare(&m_driver._hyperparams, NULL);
-			state[actionNum].collectFeat(strFeats, answer);
-            state[actionNum].move(&(state[actionNum + 1]), answer);
+            state[actionNum].prepare(&m_driver._hyperparams, NULL);
+            state[actionNum].collectFeat(strFeats, answer);
+            state[actionNum].move(&(state[actionNum + 1]), answer, NULL, CAction());
             actionNum++;
         }
-		int featSize = strFeats.size();
-		for (int idx = 0; idx < featSize; idx++) {
-			feat_stat[strFeats[idx]]++;
+        int featSize = strFeats.size();
+        for (int idx = 0; idx < featSize; idx++) {
+            feat_stat[strFeats[idx]]++;
         }
 
         state[actionNum].getSegResults(output);
@@ -130,7 +130,7 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     cout << "Total char num: " << char_stat.size() << endl;
     cout << "Total feat num: " << feat_stat.size() << endl;
 
-	m_driver._modelparams.sparsefeats.initial(feat_stat, m_options.featCutOff);
+    m_driver._modelparams.sparsefeats.initial(feat_stat, m_options.featCutOff);
     cout << "Remain feat num: " << m_driver._modelparams.sparsefeats.size() << endl;
     cout << "Dictionary word num: " << m_driver._hyperparams.dicts.size() << endl;
 
@@ -158,7 +158,7 @@ void Segmentor::getGoldActions(const vector<Instance>& vecInsts, vector<vector<C
         while (!state[actionNum].IsTerminated()) {
             state[actionNum].getGoldAction(instance.words, answer);
             vecActions[numInstance].push_back(answer);
-            state[actionNum].move(&state[actionNum + 1], answer);
+            state[actionNum].move(&state[actionNum + 1], answer, NULL, CAction());
             actionNum++;
         }
 

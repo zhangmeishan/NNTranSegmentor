@@ -194,15 +194,19 @@ inline std::string wordtype(const std::string &s) {
     getCharactersFromUTF8String(s, chars);
     std::string type = "";
     for (int i = 0; i < chars.size(); i++) {
-        if (chars[i].length() > 1) {
+        if (chars[i].length() > 2) {
+            type = type + "U";
+        } else if (chars[i].length() == 2) {
             type = type + "u";
-        } else if (isdigit(chars[i][0])) {
-            type = type + "d";
         } else if (isalpha(chars[i][0])) {
             if (islower(chars[i][0]))
                 type = type + "e";
             else
                 type = type + "E";
+        } else if (ispunct(chars[i][0])) {
+            type = type + "p";
+        } else if (isdigit(chars[i][0])) {
+            type = type + "d";
         } else {
             type = type + "o";
         }
@@ -224,7 +228,7 @@ inline std::string normalize_to_lowerwithdigit(const std::string& s) {
             if (islower(chars[i][0])) {
                 lowcase = lowcase + chars[i][0];
             } else {
-                char temp = chars[i][0] + 'a'-'A';
+                char temp = chars[i][0] + 'a' - 'A';
                 lowcase = lowcase + temp;
             }
         } else {

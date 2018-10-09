@@ -33,6 +33,7 @@ struct HyperParams {
 
     int state_feat_dim;
     int state_hidden_dim;
+    dtype scale;
 
   public:
     HyperParams() {
@@ -65,6 +66,7 @@ struct HyperParams {
 
         state_feat_dim = 2 * char_lstm_dim + word_lstm_dim;
         state_hidden_dim = opt.sepHiddenSize;
+        scale = opt.scale;
     }
 
     void clear() {
@@ -101,6 +103,7 @@ struct HyperParams {
 
         std::cout << "state_feat_dim = " << state_feat_dim << std::endl;
         std::cout << "state_hidden_dim = " << state_hidden_dim << std::endl;
+        std::cout << "scale = " << scale << std::endl;
 
         std::cout << std::endl;
     }

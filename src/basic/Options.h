@@ -27,6 +27,7 @@ class Options {
     dtype delta;
     dtype clip;
     dtype oovRatio;
+    dtype scale;
     int beam;
 
     int wordStateSize;
@@ -85,6 +86,7 @@ class Options {
         delta = 0.2;
         clip = -1.0;
         oovRatio = 0.2;
+        scale = 1.0;
         beam = 4;
 
         wordStateSize = 100;
@@ -166,6 +168,8 @@ class Options {
                 clip = atof(pr.second.c_str());
             if (pr.first == "oovRatio")
                 oovRatio = atof(pr.second.c_str());
+            if (pr.first == "scale")
+                scale = atof(pr.second.c_str());
             if (pr.first == "beam")
                 beam = atoi(pr.second.c_str());
 
@@ -264,6 +268,7 @@ class Options {
         std::cout << "delta = " << delta << std::endl;
         std::cout << "clip = " << clip << std::endl;
         std::cout << "oovRatio = " << oovRatio << std::endl;
+        std::cout << "scale = " << scale << std::endl;
         std::cout << "beam = " << beam << std::endl;
 
         std::cout << "wordStateSize = " << wordStateSize << std::endl;

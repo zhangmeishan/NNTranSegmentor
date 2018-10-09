@@ -14,6 +14,7 @@
 
 struct ActionedNodes {
     vector<SparseNode> sparse_features;
+    vector<ScaleNode> scale_features;
 
     LookupNode last_word_input;
     IncLSTM1Builder word_lstm;
@@ -23,6 +24,8 @@ struct ActionedNodes {
 
     LinearNode app_score;
     LinearNode sep_score;
+    ScaleNode scale_app_score;
+    ScaleNode scale_sep_score;
     vector<PAddNode> outputs;
 
     BucketNode bucket_char, bucket_word;
@@ -47,15 +50,19 @@ struct ActionedNodes {
 
         app_score.setParam(&(params.app_score));
         app_score.init(1, -1);
+        scale_app_score.init(1, -1);
         sep_score.setParam(&(params.sep_score));
         sep_score.init(1, -1);
+        scale_sep_score.init(1, -1);
 
         outputs.resize(hyparams.action_num);
         sparse_features.resize(hyparams.action_num);
+        scale_features.resize(hyparams.action_num);
         //neural features
         for (int idx = 0; idx < hyparams.action_num; idx++) {
             sparse_features[idx].setParam(&params.sep_app_feats);
             sparse_features[idx].init(1, -1);
+            scale_features[idx].init(1, -1);
             outputs[idx].init(1, -1);
         }
 
@@ -200,15 +207,18 @@ struct ActionedNodes {
             }
 
             sparse_features[idx].forward(cg, strFeats);
-            sumNodes.push_back(&sparse_features[idx]);
+            scale_features[idx].forward(cg, &(sparse_features[idx]), opt->scale);
+            sumNodes.push_back(&scale_features[idx]);
 
 
             if (ac.isAppend()) {
                 app_score.forward(cg, &state_represent);
-                sumNodes.push_back(&app_score);
+                scale_app_score.forward(cg, &app_score, (1 - opt->scale));
+                sumNodes.push_back(&scale_app_score);
             } else if (ac.isSeparate() || ac.isFinish()) {
                 sep_score.forward(cg, &state_represent);
-                sumNodes.push_back(&sep_score);
+                scale_sep_score.forward(cg, &sep_score, (1 - opt->scale));
+                sumNodes.push_back(&scale_sep_score);
             } else {
                 std::cout << "error action here" << std::endl;
             }

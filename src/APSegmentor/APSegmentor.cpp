@@ -10,7 +10,7 @@
 #include <omp.h>
 #include "Argument_helper.h"
 
-Segmentor::Segmentor(){
+Segmentor::Segmentor() {
     // TODO Auto-generated constructor stub
     srand(0);
     //Node::id = 0;
@@ -47,33 +47,33 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
         }
     }
 
-	unordered_map<string, int> feat_stat;
-	vector<string> strFeats;
+    unordered_map<string, int> feat_stat;
+    vector<string> strFeats;
     vector<CStateItem> state(m_driver._hyperparams.maxlength + 1);
     vector<string> output;
     CAction answer;
     Metric eval;
     int actionNum;
     eval.reset();
-	std::cout << "Collect gold-standard features..." << std::endl;
+    std::cout << "Collect gold-standard features..." << std::endl;
     for (numInstance = 0; numInstance < vecInsts.size(); numInstance++) {
         const Instance &instance = vecInsts[numInstance];
         actionNum = 0;
         state[actionNum].clear();
-		strFeats.clear();
+        strFeats.clear();
         state[actionNum].setInput(&instance.chars);
         while (!state[actionNum].IsTerminated()) {
             state[actionNum].getGoldAction(instance.words, answer);
-			state[actionNum].prepare(&m_driver._hyperparams);
-			state[actionNum].collectFeat(strFeats, answer);
+            state[actionNum].prepare(&m_driver._hyperparams);
+            state[actionNum].collectFeat(strFeats, answer);
             state[actionNum].move(&(state[actionNum + 1]), answer);
             actionNum++;
         }
 
-		int featSize = strFeats.size();
-		for (int idx = 0; idx < featSize; idx++) {
-			feat_stat[strFeats[idx]]++;
-		}
+        int featSize = strFeats.size();
+        for (int idx = 0; idx < featSize; idx++) {
+            feat_stat[strFeats[idx]]++;
+        }
 
         state[actionNum].getSegResults(output);
 
@@ -99,7 +99,7 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     cout << "Total word num: " << word_stat.size() << endl;
     cout << "Total feat num: " << feat_stat.size() << endl;
 
-	m_driver._modelparams.sparsefeats.initial(feat_stat, m_options.featCutOff);
+    m_driver._modelparams.sparsefeats.initial(feat_stat, m_options.featCutOff);
 
     cout << "Remain word num: " << m_driver._modelparams.sparsefeats.size() << endl;
     cout << "Dictionary word num: " << m_driver._hyperparams.dicts.size() << endl;

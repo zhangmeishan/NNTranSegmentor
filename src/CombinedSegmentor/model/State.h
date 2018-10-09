@@ -38,6 +38,7 @@ class CStateItem {
   public:
     bool _bStart; // whether it is a start state
     bool _bGold; // for train
+    Metric _eval;
 
   public:
     CStateItem() {
@@ -72,6 +73,7 @@ class CStateItem {
         _bStart = true;
         _bGold = true;
         _score = NULL;
+        _eval.reset();
     }
 
 
@@ -143,7 +145,7 @@ class CStateItem {
         next->_lastAction.set(CAction::APP);
     }
 
-    void move(CStateItem* next, const CAction& ac) {
+    void move(CStateItem* next, const CAction& ac, CStateItem* pGoldState, const CAction& goldac) {
         if (ac.isAppend()) {
             append(next);
         } else if (ac.isSeparate()) {
@@ -154,8 +156,11 @@ class CStateItem {
             std::cout << "error action" << std::endl;
         }
 
-        next->_bStart = false;
+        reward(pGoldState, goldac, ac, next->_eval);
+
         next->_bGold = false;
+        if(_bGold && ac == goldac) next->_bGold = true;
+        next->_bStart = false;
     }
 
     bool IsTerminated() const {
@@ -333,6 +338,101 @@ class CStateItem {
         _atomFeat.p_char_left_lstm = global_nodes == NULL ? NULL : &(global_nodes->char_left_lstm);
         _atomFeat.p_char_right_lstm = global_nodes == NULL ? NULL : &(global_nodes->char_right_lstm);
     }
+
+  public:
+    inline dtype reward(CStateItem* pGoldState, const CAction& goldac, const CAction& nextac, Metric& eval) {
+        if (pGoldState == NULL || goldac.isNone()) return 0; //no use
+        /*
+        Metric eval_temp;
+
+        unordered_set<string> golds;
+        pGoldState->getSegIndexes(goldac, golds);
+
+        unordered_set<string> preds;
+        getSegIndexes(nextac, preds);
+
+        unordered_set<string>::iterator iter;
+        eval_temp.overall_label_count += golds.size();
+        eval_temp.predicated_label_count += preds.size();
+        for (iter = preds.begin(); iter != preds.end(); iter++) {
+        	if (golds.find(*iter) != golds.end()) {
+        		eval_temp.correct_label_count++;
+        	}
+        }
+        */
+        eval.set(_eval);
+        if (goldac == nextac) {
+            if (goldac.isSeparate()) {
+                eval.correct_label_count++;
+                eval.overall_label_count++;
+                eval.predicated_label_count++;
+            }
+        } else {
+            if (pGoldState->_wstart == _wstart) eval.correct_label_count--;
+            if (goldac.isSeparate()) {
+                //nextac must be APP
+                eval.overall_label_count++;
+            } else if (goldac.isAppend()) {
+                eval.predicated_label_count++;
+            }
+        }
+
+        //if (eval != eval_temp) {
+        //	std::cout << "Please check the inconsistence" << std::endl;
+        //}
+
+
+        return eval.getAccuracy();
+
+    }
+
+  private:
+    inline void getSegIndexes(const CAction& nextac, unordered_set<string>& segIndexes) {
+        segIndexes.clear();
+
+        vector<const CStateItem *> preSepStates;
+        preSepStates.clear();
+        if (!IsTerminated()) {
+            //preSepStates.insert(preSepStates.begin(), this);
+            if (nextac.isSeparate()) {
+                {
+                    stringstream ss;
+                    ss << "[" << _next_index << "," << _next_index << "]";
+                    segIndexes.insert(ss.str());
+                }
+                if(!_bStart) {
+                    stringstream ss;
+                    ss << "[" << _wstart << "," << _wend << "]";
+                    segIndexes.insert(ss.str());
+                }
+            } else if (nextac.isAppend()) {
+                stringstream ss;
+                ss << "[" << _wstart << "," << _next_index << "]";
+                segIndexes.insert(ss.str());
+            } else if (nextac.isFinish()) {
+                stringstream ss;
+                ss << "[" << _wstart << "," << _wend << "]";
+                segIndexes.insert(ss.str());
+            } else {
+                //error
+                std::cout << "state to seg error" << std::endl;
+            }
+
+        }
+        const CStateItem *prevStackState = _prevStackState;
+        while (prevStackState != 0 && !prevStackState->_bStart) {
+            preSepStates.insert(preSepStates.begin(), prevStackState);
+            prevStackState = prevStackState->_prevStackState;
+        }
+        //will add results
+        int state_num = preSepStates.size();
+        for (int idx = 0; idx < state_num; idx++) {
+            stringstream ss;
+            ss << "[" << preSepStates[idx]->_wstart << "," << preSepStates[idx]->_wend << "]";
+            segIndexes.insert(ss.str());
+        }
+    }
+
 };
 
 
@@ -377,6 +477,18 @@ class CScoredState_Compare {
             return 1;
         else
             return 0;
+    }
+};
+
+
+struct COutput {
+    PNode in;
+    bool bGold;
+
+    COutput() : in(NULL), bGold(0) {
+    }
+
+    COutput(const COutput& other) : in(other.in), bGold(other.bGold) {
     }
 };
 

@@ -12,23 +12,25 @@
 #include "State.h"
 #include "ActionedNodes.h"
 #include "Action.h"
-#include "ComputionGraph.h"
+#include "GreedyGraph.h"
 
 class Driver {
   public:
     Driver() {
         _batch = 0;
+        _clip = 10.0;
     }
 
     ~Driver() {
         _batch = 0;
-        _builders.clear();
+        _clip = 10.0;
+        _greedy_builders.clear();
     }
 
   public:
     Graph _cg;  // build neural graphs
-    vector<Graph> _decode_cgs;
-    vector<GraphBuilder> _builders;
+    Graph _dcg;
+    vector<GreedyGraphBuilder> _greedy_builders;
     ModelParams _modelparams;  // model parameters
     HyperParams _hyperparams;
 
@@ -36,6 +38,7 @@ class Driver {
     ModelUpdate _ada;  // model update
 
     int _batch;
+    dtype _clip;
 
   public:
 
@@ -50,13 +53,12 @@ class Driver {
         }
         _hyperparams.print();
 
-        _builders.resize(_hyperparams.batch);
-        _decode_cgs.resize(_hyperparams.batch);
+        _greedy_builders.resize(_hyperparams.batch);
+
 
         for (int idx = 0; idx < _hyperparams.batch; idx++) {
-            _builders[idx].initial(_modelparams, _hyperparams);
+            _greedy_builders[idx].initial(_modelparams, _hyperparams);
         }
-
 
         setUpdateParameters(_hyperparams.nnRegular, _hyperparams.adaAlpha, _hyperparams.adaEps);
         _batch = 0;
@@ -67,72 +69,114 @@ class Driver {
     dtype train(const std::vector<std::vector<string> >& sentences, const vector<vector<CAction> >& goldACs) {
         _eval.reset();
         dtype cost = 0.0;
-        _cg.clearValue(true);
-
         int num = sentences.size();
-        if (num > _builders.size()) {
+        if (num > _greedy_builders.size()) {
             std::cout << "input example number is larger than predefined batch number" << std::endl;
             return -1;
         }
 
+        _cg.clearValue(true);
         for (int idx = 0; idx < num; idx++) {
-            _builders[idx].encode(&_cg, &sentences[idx]);
+            _greedy_builders[idx].encode(&_cg, &sentences[idx]);
         }
         _cg.compute();
 
-        #pragma omp parallel for schedule(static,1)
+        _dcg.clearValue(true);
+        //#pragma omp parallel for schedule(static,1)
         for (int idx = 0; idx < num; idx++) {
-            _decode_cgs[idx].clearValue(true);
-            _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx], &goldACs[idx]);
-            cost += loss_google(_builders[idx], num);
-            _decode_cgs[idx].backward();
+            _greedy_builders[idx].decode_prepare(&sentences[idx]);
         }
-
+        bool all_finish = false;
+        while (!all_finish) {
+            all_finish = true;
+            for (int idx = 0; idx < num; idx++) {
+                if (!_greedy_builders[idx].is_finish)
+                    all_finish = false;
+            }
+            if (!all_finish) {
+                for (int idx = 0; idx < num; idx++) {
+                    _greedy_builders[idx].decode_forward(&_dcg, &sentences[idx], &goldACs[idx]);
+                }
+                _dcg.compute();
+                for (int idx = 0; idx < num; idx++) {
+                    _greedy_builders[idx].decode_apply_action(&_dcg, &sentences[idx], &goldACs[idx]);
+                }
+            }
+        }
+        for (int idx = 0; idx < num; idx++) {
+            _eval.overall_label_count += goldACs[idx].size();
+            cost += loss_google(_greedy_builders[idx], num);
+        }
+        _dcg.backward();
         _cg.backward();
+
         return cost;
     }
 
     void decode(const std::vector<std::vector<string> >& sentences, vector<vector<string> >& results) {
         int num = sentences.size();
-        if (num > _builders.size()) {
+        if (num > _greedy_builders.size()) {
             std::cout << "input example number is larger than predefined batch number" << std::endl;
             return;
         }
         _cg.clearValue();
         for (int idx = 0; idx < num; idx++) {
-            _builders[idx].encode(&_cg, &sentences[idx]);
+            _greedy_builders[idx].encode(&_cg, &sentences[idx]);
         }
         _cg.compute();
 
-        results.resize(num);
-        #pragma omp parallel for schedule(static,1)
+        _dcg.clearValue();
         for (int idx = 0; idx < num; idx++) {
-            _decode_cgs[idx].clearValue();
-            _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx]);
-            int step = _builders[idx].outputs.size();
-            _builders[idx].states[step - 1].getSegResults(results[idx]);
+            _greedy_builders[idx].decode_prepare(&sentences[idx]);
         }
+        bool all_finish = false;
+        while (!all_finish) {
+            all_finish = true;
+            for (int idx = 0; idx < num; idx++) {
+                if (!_greedy_builders[idx].is_finish)
+                    all_finish = false;
+            }
+            if (!all_finish) {
+                for (int idx = 0; idx < num; idx++) {
+                    _greedy_builders[idx].decode_forward(&_dcg, &sentences[idx]);
+                }
+                _dcg.compute();
+                for (int idx = 0; idx < num; idx++) {
+                    _greedy_builders[idx].decode_apply_action(&_dcg, &sentences[idx]);
+                }
+            }
+        }
+
+        results.resize(num);
+
+        //#pragma omp parallel for schedule(static,1)
+        for (int idx = 0; idx < num; idx++) {
+            int step = _greedy_builders[idx].outputs.size();
+            _greedy_builders[idx].states[step - 1].getSegResults(results[idx]);
+        }
+
     }
 
     void updateModel() {
+        //if (_batch <= 0) return;
         if (_ada._params.empty()) {
             _modelparams.exportModelParams(_ada);
         }
         //_ada.rescaleGrad(1.0 / _batch);
         _ada.update(10);
-        //_ada.updateAdam(10);
+        //_ada.updateAdam(_clip);
         _batch = 0;
     }
-
 
     void writeModel();
 
     void loadModel();
 
   private:
-    dtype loss_google(GraphBuilder& builder, int num) {
+    dtype loss_google(GreedyGraphBuilder& builder, int num) {
         int maxstep = builder.outputs.size();
         if (maxstep == 0) return 1.0;
+        //_eval.correct_label_count += maxstep;
         PNode pBestNode = NULL;
         PNode pGoldNode = NULL;
         PNode pCurNode;
@@ -143,6 +187,10 @@ class Driver {
 
         for (int step = 0; step < maxstep; step++) {
             curcount = builder.outputs[step].size();
+            if (curcount == 1) {
+                _eval.correct_label_count++;
+                continue;
+            }
             max = 0.0;
             goldIndex = -1;
             pBestNode = pGoldNode = NULL;
@@ -176,16 +224,16 @@ class Driver {
                 pCurNode->loss[0] += scores[idx] / (sum * num);
             }
 
+            if (pBestNode == pGoldNode)_eval.correct_label_count++;
+            //_eval.overall_label_count++;
+
             cost += -log(scores[goldIndex] / sum);
 
             if (std::isnan(cost)) {
                 std::cout << "std::isnan(cost), google loss,  debug" << std::endl;
             }
 
-            if (pBestNode == pGoldNode)_eval.correct_label_count++;
-            _eval.overall_label_count++;
             _batch++;
-
         }
 
         return cost;
@@ -197,6 +245,11 @@ class Driver {
         _ada._alpha = adaAlpha;
         _ada._eps = adaEps;
         _ada._reg = nnRegular;
+    }
+
+
+    inline void setClip(dtype clip) {
+        _clip = clip;
     }
 
 };

@@ -157,6 +157,23 @@ class CStateItem {
         next->_bGold = false;
     }
 
+    void move(CStateItem* next, const CAction& ac, CStateItem* pGoldState, const CAction& goldac) {
+        if (ac.isAppend()) {
+            append(next);
+        } else if (ac.isSeparate()) {
+            separate(next);
+        } else if (ac.isFinish()) {
+            finish(next);
+        } else {
+            std::cout << "error action" << std::endl;
+        }
+
+        //reward(pGoldState, goldac, ac, next->_eval);
+        next->_bGold = false;
+        if(_bGold && ac == goldac) next->_bGold = true;
+        next->_bStart = false;
+    }
+
     bool IsTerminated() const {
         if (_lastAction.isFinish())
             return true;
@@ -369,6 +386,18 @@ class CScoredState_Compare {
             return 1;
         else
             return 0;
+    }
+};
+
+
+struct COutput {
+    PNode in;
+    bool bGold;
+
+    COutput() : in(NULL), bGold(0) {
+    }
+
+    COutput(const COutput& other) : in(other.in), bGold(other.bGold) {
     }
 };
 

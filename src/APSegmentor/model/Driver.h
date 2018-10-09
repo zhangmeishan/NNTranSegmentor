@@ -12,22 +12,24 @@
 #include "State.h"
 #include "ActionedNodes.h"
 #include "Action.h"
-#include "ComputionGraph.h"
+#include "BeamGraph.h"
 
 class Driver {
   public:
     Driver() {
         _batch = 0;
+        _clip = 10.0;
     }
 
     ~Driver() {
         _batch = 0;
-        _builders.clear();
+        _clip = 10.0;
+        _beam_builders.clear();
     }
 
   public:
-    vector<Graph> _decode_cgs;
-    vector<GraphBuilder> _builders;
+    Graph _dcg;
+    vector<BeamGraphBuilder> _beam_builders;
     ModelParams _modelparams;  // model parameters
     HyperParams _hyperparams;
 
@@ -35,6 +37,7 @@ class Driver {
     ModelUpdate _ada;  // model update
 
     int _batch;
+    dtype _clip;
 
   public:
 
@@ -49,11 +52,11 @@ class Driver {
         }
         _hyperparams.print();
 
-        _builders.resize(_hyperparams.batch);
-        _decode_cgs.resize(_hyperparams.batch);
+        _beam_builders.resize(_hyperparams.batch);
+
 
         for (int idx = 0; idx < _hyperparams.batch; idx++) {
-            _builders[idx].initial(_modelparams, _hyperparams);
+            _beam_builders[idx].initial(_modelparams, _hyperparams);
         }
 
         setUpdateParameters(_hyperparams.nnRegular, _hyperparams.adaAlpha, _hyperparams.adaEps);
@@ -65,50 +68,90 @@ class Driver {
     dtype train(const std::vector<std::vector<string> >& sentences, const vector<vector<CAction> >& goldACs) {
         _eval.reset();
         dtype cost = 0.0;
-
         int num = sentences.size();
-        if (num > _builders.size()) {
+        if (num > _beam_builders.size()) {
             std::cout << "input example number is larger than predefined batch number" << std::endl;
             return -1;
         }
 
-        #pragma omp parallel for schedule(static,1)
+        _dcg.clearValue(true);
+        //#pragma omp parallel for schedule(static,1)
         for (int idx = 0; idx < num; idx++) {
-            _decode_cgs[idx].clearValue(true);
-            _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx], &goldACs[idx]);
-            _eval.overall_label_count += goldACs[idx].size();
-            cost += loss(_builders[idx], num);
-            _decode_cgs[idx].backward();
+            _beam_builders[idx].decode_prepare(&_dcg, &sentences[idx]);
         }
+        bool all_finish = false;
+        while (!all_finish) {
+            all_finish = true;
+            for (int idx = 0; idx < num; idx++) {
+                if (!_beam_builders[idx].is_finish)
+                    all_finish = false;
+            }
+            if (!all_finish) {
+                for (int idx = 0; idx < num; idx++) {
+                    _beam_builders[idx].decode_forward(&_dcg, &sentences[idx]);
+                }
+                _dcg.compute();
+                for (int idx = 0; idx < num; idx++) {
+                    _beam_builders[idx].decode_apply_action(&_dcg, &sentences[idx], &goldACs[idx]);
+                }
+            }
+        }
+        for (int idx = 0; idx < num; idx++) {
+            _eval.overall_label_count += goldACs[idx].size();
+            cost += loss(_beam_builders[idx], num);
+        }
+        _dcg.backward();
 
         return cost;
     }
 
     void decode(const std::vector<std::vector<string> >& sentences, vector<vector<string> >& results) {
         int num = sentences.size();
-        if (num > _builders.size()) {
+        if (num > _beam_builders.size()) {
             std::cout << "input example number is larger than predefined batch number" << std::endl;
             return;
         }
 
-        results.resize(num);
-        #pragma omp parallel for schedule(static,1)
+        _dcg.clearValue();
         for (int idx = 0; idx < num; idx++) {
-            _decode_cgs[idx].clearValue();
-            _builders[idx].decode(&(_decode_cgs[idx]), &sentences[idx]);
-            int step = _builders[idx].outputs.size();
-            _builders[idx].states[step - 1][0].getSegResults(results[idx]);
+            _beam_builders[idx].decode_prepare(&_dcg, &sentences[idx]);
+        }
+        bool all_finish = false;
+        while (!all_finish) {
+            all_finish = true;
+            for (int idx = 0; idx < num; idx++) {
+                if (!_beam_builders[idx].is_finish)
+                    all_finish = false;
+            }
+            if (!all_finish) {
+                for (int idx = 0; idx < num; idx++) {
+                    _beam_builders[idx].decode_forward(&_dcg, &sentences[idx]);
+                }
+                _dcg.compute();
+                for (int idx = 0; idx < num; idx++) {
+                    _beam_builders[idx].decode_apply_action(&_dcg, &sentences[idx]);
+                }
+            }
+        }
+
+        results.resize(num);
+
+        //#pragma omp parallel for schedule(static,1)
+        for (int idx = 0; idx < num; idx++) {
+            int step = _beam_builders[idx].outputs.size();
+            _beam_builders[idx].states[step - 1][0].getSegResults(results[idx]);
         }
 
     }
 
     void updateModel() {
+        //if (_batch <= 0) return;
         if (_ada._params.empty()) {
             _modelparams.exportModelParams(_ada);
         }
         //_ada.rescaleGrad(1.0 / _batch);
-        _ada.update(10);
-        //_ada.updateAdam(10);
+        _ada.update();
+        //_ada.updateAdam(_clip);
         _batch = 0;
     }
 
@@ -118,9 +161,9 @@ class Driver {
 
   private:
     // max-margin
-    dtype loss(GraphBuilder& builder, int num) {
+    dtype loss(BeamGraphBuilder& builder, int num) {
         int maxstep = builder.outputs.size();
-        if(maxstep <= 0) return 0.0;
+        if (maxstep <= 0) return 0.0;
         _eval.correct_label_count += maxstep;
         PNode pBestNode = NULL;
         PNode pGoldNode = NULL;
@@ -161,7 +204,7 @@ class Driver {
         return cost;
     }
 
-    dtype loss_google(GraphBuilder& builder, int num) {
+    dtype loss_google(BeamGraphBuilder& builder, int num) {
         int maxstep = builder.outputs.size();
         if (maxstep == 0) return 1.0;
         _eval.correct_label_count += maxstep;
@@ -173,7 +216,7 @@ class Driver {
         vector<dtype> scores;
         dtype cost = 0.0;
 
-        for (int step = 0; step < maxstep; step++) {
+        for (int step = maxstep - 1; step < maxstep; step++) {
             curcount = builder.outputs[step].size();
             max = 0.0;
             goldIndex = -1;
@@ -227,6 +270,11 @@ class Driver {
         _ada._alpha = adaAlpha;
         _ada._eps = adaEps;
         _ada._reg = nnRegular;
+    }
+
+
+    inline void setClip(dtype clip) {
+        _clip = clip;
     }
 
 };

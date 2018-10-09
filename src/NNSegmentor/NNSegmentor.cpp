@@ -34,15 +34,15 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
     int count = 0;
     for (numInstance = 0; numInstance < vecInsts.size(); numInstance++) {
         const Instance &instance = vecInsts[numInstance];
-		int charsize = instance.charsize();
+        int charsize = instance.charsize();
         for (int idx = 0; idx < charsize; idx++) {
             char_stat[instance.chars[idx]]++;
 
-			string  subword = "";
-			for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
-				subword = subword + instance.chars[idx + idy];
-				word_stat[subword]++;
-			}
+            string  subword = "";
+            for (int idy = 0; idy < max_word_length && idx + idy < charsize; idy++) {
+                subword = subword + instance.chars[idx + idy];
+                word_stat[subword]++;
+            }
         }
         count += instance.wordsize();
     }
@@ -79,7 +79,7 @@ int Segmentor::createAlphabet(const vector<Instance>& vecInsts) {
         state[actionNum].setInput(&instance.chars);
         while (!state[actionNum].IsTerminated()) {
             state[actionNum].getGoldAction(instance.words, answer);
-            state[actionNum].move(&(state[actionNum + 1]), answer);
+            state[actionNum].move(&(state[actionNum + 1]), answer, NULL, CAction());
             actionNum++;
         }
 
@@ -130,7 +130,7 @@ void Segmentor::getGoldActions(const vector<Instance>& vecInsts, vector<vector<C
         while (!state[actionNum].IsTerminated()) {
             state[actionNum].getGoldAction(instance.words, answer);
             vecActions[numInstance].push_back(answer);
-            state[actionNum].move(&state[actionNum + 1], answer);
+            state[actionNum].move(&state[actionNum + 1], answer, NULL, CAction());
             actionNum++;
         }
 
